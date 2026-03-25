@@ -2,6 +2,7 @@
 /frontend/node_modules
 /frontend/dist
 /frontend/public/data
+/frontend/test-results
 .DS_Store
 __pycache__/
 *.pyc
