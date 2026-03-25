@@ -82,6 +82,13 @@ STATE_NAME_BY_CODE = {
     for state in STATE_INFO
 }
 
+ACCESS_LABEL_BY_PROGRAM = {
+    "medicaid": "Medicaid",
+    "chip": "CHIP",
+    "aca": "ACA",
+    "none": "No modeled assistance",
+}
+
 
 def _annual_to_monthly(value: float) -> float:
     return round(value / 12, 2)
@@ -199,6 +206,39 @@ def _build_notes(payload: HouseholdInput, raw_result: dict[str, Any]) -> list[st
     return notes
 
 
+def _build_access_summary(
+    medicaid_people: int,
+    chip_people: int,
+    aca_people: int,
+    uncovered_people: int,
+) -> str:
+    parts = []
+    if medicaid_people:
+        parts.append(
+            f"{medicaid_people} on Medicaid"
+        )
+    if chip_people:
+        parts.append(
+            f"{chip_people} on CHIP"
+        )
+    if aca_people:
+        parts.append(
+            f"{aca_people} with ACA"
+        )
+    if uncovered_people:
+        parts.append(
+            f"{uncovered_people} with none"
+        )
+    return ", ".join(parts) if parts else "No modeled assistance"
+
+
+def _tier_sort_key(item: dict[str, Any]) -> tuple[Any, ...]:
+    return (
+        *(-level for level in item["access_vector"]),
+        item["state"],
+    )
+
+
 def format_household_result(
     payload: HouseholdInput,
     raw_result: dict[str, Any],
@@ -225,6 +265,15 @@ def format_household_result(
         "programs": programs,
         "notes": _build_notes(payload, raw_result),
         "counts": raw_result["counts"],
+        "access": {
+            **raw_result["access"],
+            "summary": _build_access_summary(
+                medicaid_people=raw_result["access"]["medicaid_people"],
+                chip_people=raw_result["access"]["chip_people"],
+                aca_people=raw_result["access"]["aca_people"],
+                uncovered_people=raw_result["access"]["uncovered_people"],
+            ),
+        },
         "context": raw_result["context"],
         "people": raw_result["people"],
     }
@@ -241,12 +290,35 @@ def format_states_result(raw_result: list[dict[str, Any]]) -> dict[str, Any]:
             "medicaid_monthly": _annual_to_monthly(item["medicaid"]),
             "chip_monthly": _annual_to_monthly(item["chip"]),
             "eligible": item["healthcare_benefit_value"] > 0,
+            "access_vector": item["access_vector"],
+            "medicaid_people": item["medicaid_people"],
+            "chip_people": item["chip_people"],
+            "aca_people": item["aca_people"],
+            "uncovered_people": item["uncovered_people"],
+            "access_summary": _build_access_summary(
+                medicaid_people=item["medicaid_people"],
+                chip_people=item["chip_people"],
+                aca_people=item["aca_people"],
+                uncovered_people=item["uncovered_people"],
+            ),
         }
         for item in raw_result
     ]
+
+    states.sort(key=_tier_sort_key)
+
+    tier = 0
+    tier_signature = None
+    for item in states:
+        signature = tuple(item["access_vector"])
+        if signature != tier_signature:
+            tier += 1
+            tier_signature = signature
+        item["access_tier"] = tier
+
     return {
         "states": states,
-        "max_support": max((item["support_monthly"] for item in states), default=0),
+        "tier_count": tier,
     }
 
 

@@ -80,6 +80,13 @@ IMMIGRATION_STATUS_TO_PE = {
 
 SUPPORTED_IMMIGRATION_STATUSES = list(IMMIGRATION_STATUS_TO_PE)
 
+ACCESS_LEVEL_BY_PROGRAM = {
+    "none": 0,
+    "aca": 1,
+    "chip": 2,
+    "medicaid": 3,
+}
+
 
 class CalculatorDependencyError(RuntimeError):
     pass
@@ -155,6 +162,46 @@ def _normalize_county(county: str | None, state: str) -> str | None:
     if normalized.endswith(f"_{state}"):
         return normalized
     return f"{normalized}_{state}"
+
+
+def _best_access_program(
+    is_aca_ptc_eligible: bool,
+    is_medicaid_eligible: bool,
+    is_chip_eligible: bool,
+) -> tuple[str, int]:
+    if is_medicaid_eligible:
+        return "medicaid", ACCESS_LEVEL_BY_PROGRAM["medicaid"]
+    if is_chip_eligible:
+        return "chip", ACCESS_LEVEL_BY_PROGRAM["chip"]
+    if is_aca_ptc_eligible:
+        return "aca", ACCESS_LEVEL_BY_PROGRAM["aca"]
+    return "none", ACCESS_LEVEL_BY_PROGRAM["none"]
+
+
+def _access_summary(people: list[dict[str, Any]]) -> dict[str, Any]:
+    counts = {
+        "medicaid_people": 0,
+        "chip_people": 0,
+        "aca_people": 0,
+        "uncovered_people": 0,
+    }
+    vector = []
+
+    for person in people:
+        program = person["best_access_program"]
+        counts_key = {
+            "medicaid": "medicaid_people",
+            "chip": "chip_people",
+            "aca": "aca_people",
+            "none": "uncovered_people",
+        }[program]
+        counts[counts_key] += 1
+        vector.append(person["best_access_level"])
+
+    return {
+        **counts,
+        "access_vector": sorted(vector, reverse=True),
+    }
 
 
 def _validate_input(payload: HouseholdInput) -> None:
@@ -284,6 +331,11 @@ def calculate_household(payload: HouseholdInput) -> dict[str, Any]:
         medicaid_eligible,
         chip_eligible,
     ):
+        best_access_program, best_access_level = _best_access_program(
+            is_aca_ptc_eligible=aca,
+            is_medicaid_eligible=medicaid,
+            is_chip_eligible=chip,
+        )
         people.append(
             {
                 "id": person.id,
@@ -296,6 +348,8 @@ def calculate_household(payload: HouseholdInput) -> dict[str, Any]:
                 "is_aca_ptc_eligible": aca,
                 "is_medicaid_eligible": medicaid,
                 "is_chip_eligible": chip,
+                "best_access_program": best_access_program,
+                "best_access_level": best_access_level,
             }
         )
 
@@ -317,6 +371,7 @@ def calculate_household(payload: HouseholdInput) -> dict[str, Any]:
             )
         ),
     }
+    access = _access_summary(people)
 
     return {
         "input": {
@@ -332,6 +387,7 @@ def calculate_household(payload: HouseholdInput) -> dict[str, Any]:
             "medicaid_eligible_people": int(sum(medicaid_eligible)),
             "chip_eligible_people": int(sum(chip_eligible)),
         },
+        "access": access,
         "context": {
             "aca_magi": _as_float(
                 simulation.calculate("aca_magi", map_to="tax_unit", period=year)
@@ -378,13 +434,14 @@ def calculate_all_states(payload: HouseholdInput) -> list[dict[str, Any]]:
                 "healthcare_benefit_value": result["totals"][
                     "healthcare_benefit_value"
                 ],
+                "access_vector": result["access"]["access_vector"],
+                "medicaid_people": result["access"]["medicaid_people"],
+                "chip_people": result["access"]["chip_people"],
+                "aca_people": result["access"]["aca_people"],
+                "uncovered_people": result["access"]["uncovered_people"],
             }
         )
-    return sorted(
-        results,
-        key=lambda item: item["healthcare_benefit_value"],
-        reverse=True,
-    )
+    return results
 
 
 def calculate_income_series(

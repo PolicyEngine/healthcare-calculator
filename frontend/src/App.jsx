@@ -18,7 +18,7 @@ function App() {
   const [error, setError] = useState(null)
   const [result, setResult] = useState(null)
   const [comparisonData, setComparisonData] = useState(null)
-  const [maxSupport, setMaxSupport] = useState(0)
+  const [tierCount, setTierCount] = useState(0)
   const [lastInputs, setLastInputs] = useState(null)
   const [activeTab, setActiveTab] = useState('State comparison')
   const requestIdRef = useRef(0)
@@ -33,7 +33,7 @@ function App() {
   const clearResults = () => {
     setResult(null)
     setComparisonData(null)
-    setMaxSupport(0)
+    setTierCount(0)
     setError(null)
     setComparisonLoading(false)
     setActiveTab('State comparison')
@@ -50,14 +50,14 @@ function App() {
       }
 
       setComparisonData(allStatesResult.states)
-      setMaxSupport(allStatesResult.max_support)
+      setTierCount(allStatesResult.tier_count || 0)
     } catch {
       if (requestId !== requestIdRef.current) {
         return
       }
 
       setComparisonData(null)
-      setMaxSupport(0)
+      setTierCount(0)
     } finally {
       if (requestId === requestIdRef.current) {
         setComparisonLoading(false)
@@ -116,7 +116,7 @@ function App() {
     setError(null)
     setResult(null)
     setComparisonData(null)
-    setMaxSupport(0)
+    setTierCount(0)
     setLastInputs(inputs)
     setActiveTab('State comparison')
 
@@ -180,7 +180,6 @@ function App() {
             availableStates={states}
             onStateSelect={handleStateSelect}
             comparisonData={comparisonData}
-            maxSupport={maxSupport}
           />
         </section>
       </div>
@@ -190,6 +189,7 @@ function App() {
         <ResultsPanel
           result={result}
           comparisonData={comparisonData}
+          tierCount={tierCount}
           loading={loading}
           error={error}
           onRetry={lastInputs ? handleRetry : null}

@@ -1,72 +1,37 @@
 import { useMemo, useState } from 'react'
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-  Cell,
-} from 'recharts'
 
-const DEFAULT_COUNT = 7
-
-const getOrdinal = (value) => {
-  const suffixes = ['th', 'st', 'nd', 'rd']
-  const mod100 = value % 100
-  return value + (suffixes[(mod100 - 20) % 10] || suffixes[mod100] || suffixes[0])
-}
+const DEFAULT_TIER_COUNT = 5
 
 function StateRanking({ data, selectedState, onStateSelect }) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
 
-  const allEligible = useMemo(() => {
+  const tierGroups = useMemo(() => {
     if (!data) return []
-    return data.filter((item) => !item.error && item.support_monthly > 0)
+
+    const groups = []
+    for (const item of data) {
+      const existing = groups[groups.length - 1]
+      if (existing && existing.accessTier === item.access_tier) {
+        existing.states.push(item)
+      } else {
+        groups.push({
+          accessTier: item.access_tier,
+          accessSummary: item.access_summary,
+          states: [item],
+        })
+      }
+    }
+    return groups
   }, [data])
 
-  const displayStates = expanded ? allEligible : allEligible.slice(0, DEFAULT_COUNT)
+  const visibleGroups = expanded ? tierGroups : tierGroups.slice(0, DEFAULT_TIER_COUNT)
 
-  const formatCurrency = (value) => new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(value)
+  const selectedStateData = useMemo(
+    () => data?.find((item) => item.state === selectedState) || null,
+    [data, selectedState],
+  )
 
-  const selectedStateData = useMemo(() => {
-    if (!selectedState) return null
-    const index = allEligible.findIndex((item) => item.state === selectedState)
-    return index >= 0 ? { ...allEligible[index], rank: index + 1 } : null
-  }, [allEligible, selectedState])
-
-  const CustomTooltip = ({ active, payload }) => {
-    if (active && payload && payload.length) {
-      const item = payload[0].payload
-      return (
-        <div style={{
-          background: '#1a2744',
-          padding: '12px 16px',
-          borderRadius: '8px',
-          boxShadow: '0 8px 24px rgba(26, 39, 68, 0.25)',
-          color: 'white',
-          fontFamily: "'Inter', sans-serif",
-        }}>
-          <p style={{ fontWeight: 600, marginBottom: '4px' }}>{item.state_name}</p>
-          <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#4FD1C5' }}>
-            {formatCurrency(item.support_monthly)}/mo
-          </p>
-          <p style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '4px' }}>
-            {formatCurrency(item.support_annual)}/year
-          </p>
-        </div>
-      )
-    }
-
-    return null
-  }
-
-  if (!data || allEligible.length === 0) {
+  if (!data || tierGroups.length === 0) {
     return <p className="ranking-empty">No states show modeled assistance for this household.</p>
   }
 
@@ -74,64 +39,52 @@ function StateRanking({ data, selectedState, onStateSelect }) {
     <div className="state-ranking">
       {selectedStateData && (
         <div className="selected-state-rank">
-          <span className="rank-badge">#{selectedStateData.rank}</span>
+          <span className="rank-badge">T{selectedStateData.access_tier}</span>
           <span className="rank-text">
-            <strong>{selectedStateData.state_name}</strong> provides the {getOrdinal(selectedStateData.rank)} strongest modeled healthcare support for this household
+            <strong>{selectedStateData.state_name}</strong> is in tier {selectedStateData.access_tier} of {tierGroups.length}
             {' '}
-            (<strong>{formatCurrency(selectedStateData.support_monthly)}/mo</strong>)
+            for modeled healthcare access.
+            {' '}
+            <strong>{selectedStateData.access_summary}</strong>
           </span>
         </div>
       )}
 
-      <div className="ranking-chart">
-        <ResponsiveContainer width="100%" height={Math.max(200, displayStates.length * 36)}>
-          <BarChart
-            data={displayStates}
-            layout="vertical"
-            margin={{ top: 5, right: 30, left: 80, bottom: 5 }}
-            barCategoryGap={6}
-          >
-            <XAxis
-              type="number"
-              tickFormatter={(value) => `$${value}`}
-              tick={{ fill: '#6b7280', fontSize: 11 }}
-              axisLine={{ stroke: '#e5e2dd' }}
-              tickLine={{ stroke: '#e5e2dd' }}
-            />
-            <YAxis
-              type="category"
-              dataKey="state_name"
-              tick={{ fill: '#1a2744', fontSize: 12, fontWeight: 500 }}
-              axisLine={false}
-              tickLine={false}
-              width={75}
-            />
-            <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(13, 148, 136, 0.08)' }} />
-            <Bar
-              dataKey="support_monthly"
-              radius={[0, 4, 4, 0]}
-              onClick={(entry) => onStateSelect(entry.state)}
-              style={{ cursor: 'pointer' }}
-            >
-              {displayStates.map((entry) => (
-                <Cell
-                  key={entry.state}
-                  fill={entry.state === selectedState ? '#EF4444' : '#319795'}
-                  opacity={entry.state === selectedState ? 1 : 0.85}
-                />
+      <div className="ranking-tier-list">
+        {visibleGroups.map((group) => (
+          <section key={group.accessTier} className="ranking-tier-card">
+            <div className="ranking-tier-header">
+              <div>
+                <div className="ranking-tier-badge">Tier {group.accessTier}</div>
+                <h3>{group.accessSummary}</h3>
+                <p>{group.states.length} state{group.states.length === 1 ? '' : 's'} share this access pattern</p>
+              </div>
+            </div>
+
+            <div className="ranking-state-chips">
+              {group.states.map((state) => (
+                <button
+                  key={state.state}
+                  type="button"
+                  className={`ranking-state-chip ${state.state === selectedState ? 'active' : ''}`}
+                  onClick={() => onStateSelect(state.state)}
+                >
+                  <span className="ranking-state-name">{state.state_name}</span>
+                  <span className="ranking-state-code">{state.state}</span>
+                </button>
               ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
+            </div>
+          </section>
+        ))}
       </div>
 
       <div className="ranking-footer">
-        {allEligible.length > DEFAULT_COUNT && (
+        {tierGroups.length > DEFAULT_TIER_COUNT && (
           <button className="expand-btn" onClick={() => setExpanded(!expanded)}>
-            {expanded ? 'Show less' : `Show all ${allEligible.length} states`}
+            {expanded ? 'Show fewer tiers' : `Show all ${tierGroups.length} tiers`}
           </button>
         )}
-        <p>Click a bar to select that state</p>
+        <p>Click a state to switch the selected result</p>
       </div>
     </div>
   )

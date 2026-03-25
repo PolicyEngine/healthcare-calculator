@@ -19,19 +19,19 @@ const FIPS_TO_STATE = {
 }
 
 const HEATMAP_COLORS = [
-  '#f0fdfa',
-  '#ccfbf1',
-  '#99f6e4',
-  '#5eead4',
-  '#2dd4bf',
-  '#14b8a6',
-  '#0d9488',
-  '#0f766e',
-  '#115e59',
   '#134e4a',
+  '#115e59',
+  '#0f766e',
+  '#0d9488',
+  '#14b8a6',
+  '#2dd4bf',
+  '#5eead4',
+  '#99f6e4',
+  '#ccfbf1',
+  '#f0fdfa',
 ]
 
-function StateMap({ selectedState, availableStates, onStateSelect, comparisonData, maxSupport }) {
+function StateMap({ selectedState, availableStates, onStateSelect, comparisonData }) {
   const [hoveredState, setHoveredState] = useState(null)
 
   const availableSet = new Set(availableStates.map((state) => state.code))
@@ -44,17 +44,25 @@ function StateMap({ selectedState, availableStates, onStateSelect, comparisonDat
   }, [comparisonData])
   const isHeatmapMode = comparisonData && comparisonData.length > 0
 
+  const tierCount = useMemo(
+    () => new Set((comparisonData || []).map((entry) => entry.access_tier)).size,
+    [comparisonData],
+  )
+
   const getHeatmapColor = (stateCode) => {
     const data = supportMap[stateCode]
-    if (!data || data.support_monthly <= 0 || maxSupport <= 0) {
+    if (!data) {
       return '#f0ede8'
     }
 
-    const ratio = data.support_monthly / maxSupport
-    const index = Math.min(
-      Math.floor(ratio * HEATMAP_COLORS.length),
-      HEATMAP_COLORS.length - 1,
-    )
+    if (data.uncovered_people === data.access_vector.length) {
+      return '#e7e5e4'
+    }
+
+    const ratio = tierCount > 1
+      ? (data.access_tier - 1) / (tierCount - 1)
+      : 0
+    const index = Math.min(Math.round(ratio * (HEATMAP_COLORS.length - 1)), HEATMAP_COLORS.length - 1)
 
     return HEATMAP_COLORS[index]
   }
@@ -75,13 +83,19 @@ function StateMap({ selectedState, availableStates, onStateSelect, comparisonDat
   const getHoverColor = (stateCode) => {
     if (isHeatmapMode) {
       const data = supportMap[stateCode]
-      if (!data || data.support_monthly <= 0 || maxSupport <= 0) {
+      if (!data) {
         return '#e5e2dd'
       }
 
-      const ratio = data.support_monthly / maxSupport
+      if (data.uncovered_people === data.access_vector.length) {
+        return '#d6d3d1'
+      }
+
+      const ratio = tierCount > 1
+        ? (data.access_tier - 1) / (tierCount - 1)
+        : 0
       const index = Math.min(
-        Math.floor(ratio * HEATMAP_COLORS.length) + 1,
+        Math.round(ratio * (HEATMAP_COLORS.length - 1)) + 1,
         HEATMAP_COLORS.length - 1,
       )
 
@@ -96,13 +110,6 @@ function StateMap({ selectedState, availableStates, onStateSelect, comparisonDat
     }
     return '#e5e2dd'
   }
-
-  const formatCurrency = (amount) => new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency: 'USD',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
-  }).format(amount)
 
   return (
     <div className="state-map-container">
@@ -150,11 +157,10 @@ function StateMap({ selectedState, availableStates, onStateSelect, comparisonDat
         <div className={`map-state-card selected ${hoveredState && hoveredState !== selectedState ? 'dimmed' : ''}`}>
           <strong>{STATE_NAME_BY_CODE[selectedState] || selectedState}</strong>
           {isHeatmapMode && supportMap[selectedState] ? (
-            <span className="benefit-amount">
-              {supportMap[selectedState].support_monthly > 0
-                ? `${formatCurrency(supportMap[selectedState].support_monthly)}/mo`
-                : 'No estimated support'}
-            </span>
+            <>
+              <span className="map-state-tier">Tier {supportMap[selectedState].access_tier}</span>
+              <span className="map-state-summary">{supportMap[selectedState].access_summary}</span>
+            </>
           ) : null}
         </div>
 
@@ -162,11 +168,10 @@ function StateMap({ selectedState, availableStates, onStateSelect, comparisonDat
           <div className="map-state-card hovered">
             <strong>{STATE_NAME_BY_CODE[hoveredState]}</strong>
             {isHeatmapMode && supportMap[hoveredState] ? (
-              <span className="benefit-amount">
-                {supportMap[hoveredState].support_monthly > 0
-                  ? `${formatCurrency(supportMap[hoveredState].support_monthly)}/mo`
-                  : 'No estimated support'}
-              </span>
+              <>
+                <span className="map-state-tier">Tier {supportMap[hoveredState].access_tier}</span>
+                <span className="map-state-summary">{supportMap[hoveredState].access_summary}</span>
+              </>
             ) : null}
           </div>
         )}
@@ -174,13 +179,13 @@ function StateMap({ selectedState, availableStates, onStateSelect, comparisonDat
 
       {isHeatmapMode && (
         <div className="heatmap-legend">
-          <span className="legend-label">Lower support</span>
+          <span className="legend-label">Best access</span>
           <div className="gradient-bar">
             {HEATMAP_COLORS.map((color) => (
               <div key={color} className="gradient-step" style={{ background: color }} />
             ))}
           </div>
-          <span className="legend-label">Higher support</span>
+          <span className="legend-label">Less access</span>
         </div>
       )}
     </div>

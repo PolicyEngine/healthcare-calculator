@@ -1,6 +1,7 @@
 function ResultsPanel({
   result,
   comparisonData,
+  tierCount,
   loading,
   error,
   onRetry,
@@ -44,13 +45,16 @@ function ResultsPanel({
   }).format(amount)
 
   const activePrograms = result.programs.filter((program) => program.amount > 0)
-  const stateRank = comparisonData
+  const accessTier = comparisonData
     ? (() => {
-        const eligibleStates = comparisonData.filter(
-          (state) => !state.error && state.support_monthly > 0,
-        )
-        const index = eligibleStates.findIndex((state) => state.state === result.state)
-        return index >= 0 ? { rank: index + 1, total: eligibleStates.length } : null
+        const selectedState = comparisonData.find((state) => state.state === result.state)
+        return selectedState
+          ? {
+              tier: selectedState.access_tier,
+              total: tierCount,
+              summary: selectedState.access_summary,
+            }
+          : null
       })()
     : null
 
@@ -76,10 +80,11 @@ function ResultsPanel({
           </div>
         </div>
         <div className="result-banner-stats">
-          {stateRank && (
+          {accessTier && (
             <div className="stat-item">
-              <span className="stat-label">State rank</span>
-              <span className="stat-value">#{stateRank.rank} of {stateRank.total}</span>
+              <span className="stat-label">Access tier</span>
+              <span className="stat-value">Tier {accessTier.tier} of {accessTier.total}</span>
+              <span className="stat-subvalue">{accessTier.summary}</span>
             </div>
           )}
         </div>
