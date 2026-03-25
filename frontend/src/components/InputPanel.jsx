@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { createInitialInputs } from '../dataLookup'
 
 function InfoTooltip({ text }) {
   return (
@@ -9,17 +10,48 @@ function InfoTooltip({ text }) {
   )
 }
 
-const INITIAL_FORM_DATA = {
-  num_adults: 1,
-  num_children: 2,
-  earned_income: 0,
-  unearned_income: 0,
-}
-
 const formatWithCommas = (value) => {
   const number = typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value
   if (Number.isNaN(number)) return '0'
   return number.toLocaleString('en-US')
+}
+
+const createAdult = (index) => ({
+  age: index === 0 ? 40 : 38,
+  has_esi: false,
+  is_pregnant: false,
+  immigration_status: 'Citizen',
+})
+
+const createChild = (age = 8) => ({
+  age,
+  immigration_status: 'Citizen',
+})
+
+function ToggleField({ label, value, onChange, disabled = false }) {
+  return (
+    <div className="toggle-field">
+      <span>{label}</span>
+      <div className="toggle-pill-group" role="group" aria-label={label}>
+        <button
+          type="button"
+          className={`toggle-pill ${!value ? 'active' : ''}`}
+          onClick={() => onChange(false)}
+          disabled={disabled}
+        >
+          No
+        </button>
+        <button
+          type="button"
+          className={`toggle-pill ${value ? 'active' : ''}`}
+          onClick={() => onChange(true)}
+          disabled={disabled}
+        >
+          Yes
+        </button>
+      </div>
+    </div>
+  )
 }
 
 function InputPanel({
@@ -31,75 +63,89 @@ function InputPanel({
   onStateSelect,
   loading,
 }) {
-  const [formData, setFormData] = useState(INITIAL_FORM_DATA)
-  const [incomeDisplay, setIncomeDisplay] = useState({
-    earned_income: '0',
-    unearned_income: '0',
-  })
+  const [formData, setFormData] = useState(() => createInitialInputs())
+  const [incomeDisplay, setIncomeDisplay] = useState(() => formatWithCommas(createInitialInputs().tax_unit_magi))
 
-  const handleChange = (event) => {
-    const { name, value } = event.target
-
-    setFormData((current) => ({
-      ...current,
-      [name]: ['num_adults', 'num_children'].includes(name) ? parseFloat(value) || 0 : value,
-    }))
-
+  const updateFormData = (updater) => {
+    setFormData((current) => {
+      const nextValue = typeof updater === 'function' ? updater(current) : updater
+      return nextValue
+    })
     onInputChange?.()
+  }
+
+  const setAdultCount = (count) => {
+    updateFormData((current) => {
+      const adults = Array.from({ length: count }, (_, index) => current.adults[index] || createAdult(index))
+      return { ...current, adults }
+    })
+  }
+
+  const setChildCount = (count) => {
+    updateFormData((current) => {
+      const fallbackAge = current.children[current.children.length - 1]?.age || 8
+      const children = Array.from(
+        { length: count },
+        (_, index) => current.children[index] || createChild(fallbackAge),
+      )
+      return { ...current, children }
+    })
   }
 
   const handleIncomeChange = (event) => {
-    const { name, value } = event.target
-    const cleaned = value.replace(/[^0-9]/g, '')
+    const cleaned = event.target.value.replace(/[^0-9]/g, '')
     const numericValue = parseFloat(cleaned) || 0
 
-    setIncomeDisplay((current) => ({
+    setIncomeDisplay(numericValue === 0 ? '' : formatWithCommas(numericValue))
+    updateFormData((current) => ({
       ...current,
-      [name]: numericValue === 0 ? '' : formatWithCommas(numericValue),
-    }))
-    setFormData((current) => ({
-      ...current,
-      [name]: numericValue,
-    }))
-
-    onInputChange?.()
-  }
-
-  const handleIncomeBlur = (event) => {
-    const { name } = event.target
-    setIncomeDisplay((current) => ({
-      ...current,
-      [name]: formatWithCommas(formData[name]),
+      tax_unit_magi: numericValue,
     }))
   }
 
-  const handleIncomeFocus = (event) => {
-    const { name } = event.target
-    const value = formData[name]
-    setIncomeDisplay((current) => ({
+  const handleIncomeBlur = () => {
+    setIncomeDisplay(formatWithCommas(formData.tax_unit_magi))
+  }
+
+  const handleIncomeFocus = () => {
+    setIncomeDisplay(formData.tax_unit_magi === 0 ? '' : formatWithCommas(formData.tax_unit_magi))
+  }
+
+  const handleAdultChange = (index, field, value) => {
+    updateFormData((current) => ({
       ...current,
-      [name]: value === 0 ? '' : formatWithCommas(value),
+      adults: current.adults.map((adult, adultIndex) => (
+        adultIndex === index
+          ? { ...adult, [field]: value }
+          : adult
+      )),
+    }))
+  }
+
+  const handleChildAgeChange = (index, value) => {
+    updateFormData((current) => ({
+      ...current,
+      children: current.children.map((child, childIndex) => (
+        childIndex === index
+          ? { ...child, age: value }
+          : child
+      )),
     }))
   }
 
   const handleSubmit = (event) => {
     event.preventDefault()
-
     onCalculate({
       ...formData,
       state: selectedState,
       year: 2026,
-      earned_income: formData.earned_income * 12,
-      unearned_income: formData.unearned_income * 12,
     })
   }
 
   const handleReset = () => {
-    setFormData(INITIAL_FORM_DATA)
-    setIncomeDisplay({
-      earned_income: '0',
-      unearned_income: '0',
-    })
+    const initialFormData = createInitialInputs()
+    setFormData(initialFormData)
+    setIncomeDisplay(formatWithCommas(initialFormData.tax_unit_magi))
     onReset?.()
   }
 
@@ -129,8 +175,8 @@ function InputPanel({
             <select
               id="num_adults"
               name="num_adults"
-              value={formData.num_adults}
-              onChange={handleChange}
+              value={formData.adults.length}
+              onChange={(event) => setAdultCount(parseFloat(event.target.value) || 1)}
             >
               <option value={1}>1 adult</option>
               <option value={2}>2 adults</option>
@@ -145,45 +191,91 @@ function InputPanel({
               name="num_children"
               min="0"
               max="7"
-              value={formData.num_children}
-              onChange={handleChange}
+              value={formData.children.length}
+              onChange={(event) => setChildCount(Math.max(0, Math.min(7, parseFloat(event.target.value) || 0)))}
             />
           </div>
 
           <div className="form-group">
-            <label htmlFor="earned_income">
-              Earned income ($/month)
-              <InfoTooltip text="Income from wages, salaries, tips, and self-employment." />
+            <label htmlFor="tax_unit_magi">
+              Annual MAGI
+              <InfoTooltip text="Modified adjusted gross income for the tax household. This drives ACA premium tax credits and much of Medicaid and CHIP eligibility." />
             </label>
             <input
               type="text"
               inputMode="numeric"
-              id="earned_income"
-              name="earned_income"
-              value={incomeDisplay.earned_income}
-              onChange={handleIncomeChange}
-              onBlur={handleIncomeBlur}
-              onFocus={handleIncomeFocus}
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="unearned_income">
-              Unearned income ($/month)
-              <InfoTooltip text="Income such as unemployment, child support, Social Security, pensions, or rental income." />
-            </label>
-            <input
-              type="text"
-              inputMode="numeric"
-              id="unearned_income"
-              name="unearned_income"
-              value={incomeDisplay.unearned_income}
+              id="tax_unit_magi"
+              name="tax_unit_magi"
+              value={incomeDisplay}
               onChange={handleIncomeChange}
               onBlur={handleIncomeBlur}
               onFocus={handleIncomeFocus}
             />
           </div>
         </div>
+
+        <section className="person-section">
+          <div className="person-section-header">
+            <h3>Adults</h3>
+            <p>Age, employer coverage, and pregnancy can change Medicaid and ACA results.</p>
+          </div>
+          <div className="person-cards">
+            {formData.adults.map((adult, index) => (
+              <div key={`adult-${index + 1}`} className="person-card">
+                <div className="person-card-header">Adult {index + 1}</div>
+                <div className="person-card-grid">
+                  <div className="form-group">
+                    <label htmlFor={`adult-age-${index + 1}`}>Age</label>
+                    <input
+                      type="number"
+                      id={`adult-age-${index + 1}`}
+                      min="0"
+                      max="120"
+                      value={adult.age}
+                      onChange={(event) => handleAdultChange(index, 'age', parseFloat(event.target.value) || 0)}
+                    />
+                  </div>
+                  <ToggleField
+                    label="Employer plan available"
+                    value={adult.has_esi}
+                    onChange={(value) => handleAdultChange(index, 'has_esi', value)}
+                  />
+                  <ToggleField
+                    label="Pregnant"
+                    value={adult.is_pregnant}
+                    onChange={(value) => handleAdultChange(index, 'is_pregnant', value)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section className="person-section">
+          <div className="person-section-header">
+            <h3>Children</h3>
+            <p>Set each child&apos;s age for Medicaid and CHIP comparisons.</p>
+          </div>
+          {formData.children.length > 0 ? (
+            <div className="child-age-grid">
+              {formData.children.map((child, index) => (
+                <div key={`child-${index + 1}`} className="form-group child-age-card">
+                  <label htmlFor={`child-age-${index + 1}`}>Child {index + 1} age</label>
+                  <input
+                    type="number"
+                    id={`child-age-${index + 1}`}
+                    min="0"
+                    max="26"
+                    value={child.age}
+                    onChange={(event) => handleChildAgeChange(index, parseFloat(event.target.value) || 0)}
+                  />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="section-note">No children in the household.</p>
+          )}
+        </section>
 
         <div className="form-actions">
           <button type="button" className="reset-btn" onClick={handleReset}>

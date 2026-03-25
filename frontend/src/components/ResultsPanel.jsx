@@ -1,10 +1,5 @@
-import BenefitChart from './BenefitChart'
-import HouseholdSizeChart from './HouseholdSizeChart'
-
 function ResultsPanel({
   result,
-  chartData,
-  householdSizeData,
   comparisonData,
   loading,
   error,
@@ -35,7 +30,7 @@ function ResultsPanel({
     return (
       <section className="results-panel">
         <div className="placeholder">
-          Enter your household information and click Calculate to compare illustrative ACA, Medicaid, and CHIP support across states.
+          Enter your household information and click Calculate to compare ACA, Medicaid, and CHIP support across states.
         </div>
       </section>
     )
@@ -48,20 +43,6 @@ function ResultsPanel({
     maximumFractionDigits: 0,
   }).format(amount)
 
-  const cutoffIncome = chartData?.data
-    ? (() => {
-        for (let index = 0; index < chartData.data.length; index += 1) {
-          const item = chartData.data[index]
-          const previous = chartData.data[index - 1]
-          if (item.support_monthly === 0 && previous?.support_monthly > 0) {
-            return item.total_income_monthly
-          }
-        }
-        return null
-      })()
-    : null
-
-  const maxSupport = result.breakdown?.max_support_monthly ?? result.support_monthly
   const activePrograms = result.programs.filter((program) => program.amount > 0)
   const stateRank = comparisonData
     ? (() => {
@@ -90,20 +71,11 @@ function ResultsPanel({
           <div className="result-meta">
             <span>{result.state_name} ({result.state})</span>
             <span>{result.household.num_adults} adult(s), {result.household.num_children} child(ren)</span>
+            <span>{formatCurrency(result.household.tax_unit_magi)} MAGI</span>
             <span>{activePrograms.length > 0 ? activePrograms.map((program) => program.short_label).join(' + ') : 'Marketplace only, no modeled assistance'}</span>
           </div>
         </div>
         <div className="result-banner-stats">
-          <div className="stat-item">
-            <span className="stat-label">Max support</span>
-            <span className="stat-value">{formatCurrency(maxSupport)}/mo</span>
-          </div>
-          {cutoffIncome && (
-            <div className="stat-item">
-              <span className="stat-label">Support fades out</span>
-              <span className="stat-value">{formatCurrency(cutoffIncome)}/mo</span>
-            </div>
-          )}
           {stateRank && (
             <div className="stat-item">
               <span className="stat-label">State rank</span>
@@ -113,7 +85,7 @@ function ResultsPanel({
         </div>
         {!result.eligible && (
           <div className="result-banner-ineligible">
-            This prototype does not estimate ACA, Medicaid, or CHIP assistance for this household in {result.state_name}.
+            This calculator does not estimate ACA, Medicaid, or CHIP assistance for this household in {result.state_name}.
           </div>
         )}
       </div>
@@ -147,22 +119,6 @@ function ResultsPanel({
           ))}
         </div>
       </details>
-
-      {chartData && householdSizeData && (
-        <div className="charts-grid">
-          <div className="chart-container">
-            <h3>Support by income</h3>
-            <BenefitChart data={chartData.data} />
-          </div>
-          <div className="chart-container">
-            <h3>Support by number of children</h3>
-            <HouseholdSizeChart
-              data={householdSizeData}
-              currentChildren={result.household.num_children}
-            />
-          </div>
-        </div>
-      )}
     </section>
   )
 }

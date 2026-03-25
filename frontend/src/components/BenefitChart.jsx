@@ -23,7 +23,7 @@ function BenefitChart({ data }) {
       return { xTicks: [0], yTicks: [0] }
     }
 
-    const xMax = Math.max(...data.map((item) => item.total_income_monthly))
+    const xMax = Math.max(...data.map((item) => item.tax_unit_magi))
     const yMax = Math.max(...data.map((item) => item.support_monthly))
 
     return {
@@ -44,7 +44,7 @@ function BenefitChart({ data }) {
           fontFamily: "'Inter', sans-serif",
         }}>
           <p style={{ fontSize: '0.75rem', letterSpacing: '0.05em', opacity: 0.7, marginBottom: '4px' }}>
-            Income: {formatCurrency(label)}/mo
+            MAGI: {formatCurrency(label)}/yr
           </p>
           <p style={{ fontSize: '1.25rem', fontWeight: 700, color: '#4FD1C5' }}>
             Support: {formatCurrency(payload[0].value)}/mo
@@ -62,12 +62,12 @@ function BenefitChart({ data }) {
         <LineChart data={data} margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#e5e2dd" />
           <XAxis
-            dataKey="total_income_monthly"
+            dataKey="tax_unit_magi"
             type="number"
             domain={[0, xTicks[xTicks.length - 1]]}
             ticks={xTicks}
             tickFormatter={formatCurrency}
-            label={{ value: 'Monthly household income', position: 'bottom', offset: -5, fill: '#6b7280', fontSize: 11 }}
+            label={{ value: 'Annual MAGI', position: 'bottom', offset: -5, fill: '#6b7280', fontSize: 11 }}
             tick={{ fill: '#6b7280', fontSize: 11 }}
             axisLine={{ stroke: '#e5e2dd' }}
             tickLine={{ stroke: '#e5e2dd' }}

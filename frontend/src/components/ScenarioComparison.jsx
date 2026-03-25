@@ -1,19 +1,29 @@
-import { useCallback, useEffect, useState } from 'react'
-import { loadStateData, lookupSupport } from '../dataLookup'
+import { useEffect, useMemo, useState } from 'react'
+import { buildScenarioInputs, calculateStateResult } from '../dataLookup'
 
-function ScenarioComparison({ defaultInputs }) {
-  const earnedA = Math.round(defaultInputs.earned_income / 12)
-  const unearnedA = Math.round(defaultInputs.unearned_income / 12)
+function ScenarioComparison({ defaultInputs, baselineResult }) {
+  const baseAdultCount = defaultInputs.adults.length
+  const baseChildCount = defaultInputs.children.length
 
   const [scenarioB, setScenarioB] = useState({
-    num_adults: defaultInputs.num_adults,
-    num_children: defaultInputs.num_children,
-    earned_income: earnedA,
-    unearned_income: unearnedA,
+    num_adults: baseAdultCount,
+    num_children: baseChildCount,
+    tax_unit_magi: defaultInputs.tax_unit_magi,
   })
-  const [supportA, setSupportA] = useState(null)
-  const [supportB, setSupportB] = useState(null)
-  const [stateData, setStateData] = useState(null)
+  const [supportB, setSupportB] = useState(baselineResult)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
+  useEffect(() => {
+    setScenarioB({
+      num_adults: defaultInputs.adults.length,
+      num_children: defaultInputs.children.length,
+      tax_unit_magi: defaultInputs.tax_unit_magi,
+    })
+    setSupportB(baselineResult)
+    setError(null)
+    setLoading(false)
+  }, [baselineResult, defaultInputs])
 
   const formatCurrency = (amount) => new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -27,38 +37,50 @@ function ScenarioComparison({ defaultInputs }) {
     || 'No estimated support'
   )
 
-  useEffect(() => {
-    loadStateData(defaultInputs.state).then((data) => {
-      setStateData(data)
-    })
-  }, [defaultInputs.state])
+  const hasChanges = scenarioB.num_adults !== baseAdultCount
+    || scenarioB.num_children !== baseChildCount
+    || scenarioB.tax_unit_magi !== defaultInputs.tax_unit_magi
 
-  const computeSupport = useCallback(() => {
-    if (!stateData) return
-
-    setSupportA(
-      lookupSupport(
-        stateData,
-        defaultInputs.num_adults,
-        defaultInputs.num_children,
-        earnedA,
-        unearnedA,
-      ),
-    )
-    setSupportB(
-      lookupSupport(
-        stateData,
-        scenarioB.num_adults,
-        scenarioB.num_children,
-        scenarioB.earned_income,
-        scenarioB.unearned_income,
-      ),
-    )
-  }, [defaultInputs.num_adults, defaultInputs.num_children, earnedA, scenarioB, stateData, unearnedA])
+  const nextScenarioInputs = useMemo(
+    () => buildScenarioInputs(defaultInputs, scenarioB),
+    [defaultInputs, scenarioB],
+  )
 
   useEffect(() => {
-    computeSupport()
-  }, [computeSupport])
+    if (!hasChanges) {
+      setSupportB(baselineResult)
+      setLoading(false)
+      setError(null)
+      return undefined
+    }
+
+    let cancelled = false
+    const timeoutId = window.setTimeout(async () => {
+      setLoading(true)
+      setError(null)
+
+      try {
+        const nextResult = await calculateStateResult(nextScenarioInputs)
+
+        if (!cancelled) {
+          setSupportB(nextResult.result)
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(err.message || 'Failed to compare scenarios.')
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }, 250)
+
+    return () => {
+      cancelled = true
+      window.clearTimeout(timeoutId)
+    }
+  }, [baselineResult, hasChanges, nextScenarioInputs])
 
   const handleSlider = (name, value) => {
     setScenarioB((current) => ({
@@ -67,11 +89,7 @@ function ScenarioComparison({ defaultInputs }) {
     }))
   }
 
-  const diff = supportA && supportB ? supportB.support_monthly - supportA.support_monthly : 0
-  const hasChanges = scenarioB.num_adults !== defaultInputs.num_adults
-    || scenarioB.num_children !== defaultInputs.num_children
-    || scenarioB.earned_income !== earnedA
-    || scenarioB.unearned_income !== unearnedA
+  const diff = baselineResult && supportB ? supportB.support_monthly - baselineResult.support_monthly : 0
 
   const sliders = [
     {
@@ -81,28 +99,18 @@ function ScenarioComparison({ defaultInputs }) {
       max: 7,
       step: 1,
       value: scenarioB.num_children,
-      originalValue: defaultInputs.num_children,
+      originalValue: baseChildCount,
       format: (value) => String(value),
     },
     {
-      name: 'earned_income',
-      label: 'Earned income',
+      name: 'tax_unit_magi',
+      label: 'Annual MAGI',
       min: 0,
-      max: 7000,
-      step: 100,
-      value: scenarioB.earned_income,
-      originalValue: earnedA,
-      format: (value) => `${formatCurrency(value)}/mo`,
-    },
-    {
-      name: 'unearned_income',
-      label: 'Unearned income',
-      min: 0,
-      max: 5000,
-      step: 100,
-      value: scenarioB.unearned_income,
-      originalValue: unearnedA,
-      format: (value) => `${formatCurrency(value)}/mo`,
+      max: 120000,
+      step: 2000,
+      value: scenarioB.tax_unit_magi,
+      originalValue: defaultInputs.tax_unit_magi,
+      format: (value) => `${formatCurrency(value)}/yr`,
     },
   ]
 
@@ -111,30 +119,31 @@ function ScenarioComparison({ defaultInputs }) {
       <div className="scenario-current">
         <span className="scenario-current-label">Current</span>
         <div className="scenario-current-chips">
-          <span className="scenario-chip">{defaultInputs.num_adults} Adult{defaultInputs.num_adults > 1 ? 's' : ''}</span>
-          <span className="scenario-chip">{defaultInputs.num_children} Child{defaultInputs.num_children !== 1 ? 'ren' : ''}</span>
-          <span className="scenario-chip">{formatCurrency(earnedA)}/mo earned</span>
-          <span className="scenario-chip">{formatCurrency(unearnedA)}/mo unearned</span>
-          <span className="scenario-chip">{programSummary(supportA)}</span>
+          <span className="scenario-chip">{baseAdultCount} Adult{baseAdultCount > 1 ? 's' : ''}</span>
+          <span className="scenario-chip">{baseChildCount} Child{baseChildCount !== 1 ? 'ren' : ''}</span>
+          <span className="scenario-chip">{formatCurrency(defaultInputs.tax_unit_magi)}/yr MAGI</span>
+          <span className="scenario-chip">{programSummary(baselineResult)}</span>
         </div>
-        {supportA && (
+        {baselineResult && (
           <div className="scenario-current-benefit">
-            {formatCurrency(supportA.support_monthly)}/mo
+            {formatCurrency(baselineResult.support_monthly)}/mo
           </div>
         )}
       </div>
 
-      <p className="scenario-hint">Adjust the values below to explore different healthcare support scenarios</p>
-      <div className={`scenario-toggle-row ${scenarioB.num_adults !== defaultInputs.num_adults ? 'changed' : ''}`}>
+      <p className="scenario-hint">Adjust the sliders below to compare a nearby healthcare scenario in the same state.</p>
+      <div className={`scenario-toggle-row ${scenarioB.num_adults !== baseAdultCount ? 'changed' : ''}`}>
         <span className="scenario-slider-label">Adults</span>
         <div className="scenario-toggle">
           <button
+            type="button"
             className={`toggle-btn ${scenarioB.num_adults === 1 ? 'active' : ''}`}
             onClick={() => handleSlider('num_adults', 1)}
           >
             1 adult
           </button>
           <button
+            type="button"
             className={`toggle-btn ${scenarioB.num_adults === 2 ? 'active' : ''}`}
             onClick={() => handleSlider('num_adults', 2)}
           >
@@ -172,34 +181,39 @@ function ScenarioComparison({ defaultInputs }) {
         })}
       </div>
 
-      {supportA && supportB && (
+      {baselineResult && supportB && (
         <div className={`scenario-live-result ${!hasChanges ? 'no-change' : ''}`}>
           <div className="scenario-result-bar">
             <div className="scenario-result-side">
               <span className="scenario-result-tag">Current</span>
-              <span className={`scenario-result-val ${supportA.eligible ? '' : 'not-eligible'}`}>
-                {formatCurrency(supportA.support_monthly)}/mo
+              <span className={`scenario-result-val ${baselineResult.eligible ? '' : 'not-eligible'}`}>
+                {formatCurrency(baselineResult.support_monthly)}/mo
               </span>
             </div>
 
             <div className={`scenario-result-diff ${diff > 0 ? 'positive' : diff < 0 ? 'negative' : 'neutral'}`}>
-              <span className="diff-icon">{diff > 0 ? '\u2191' : diff < 0 ? '\u2193' : '='}</span>
+              <span className="diff-icon">{loading ? '...' : diff > 0 ? '\u2191' : diff < 0 ? '\u2193' : '='}</span>
               <span className="diff-amount">
-                {diff > 0 ? '+' : ''}{formatCurrency(diff)}/mo
+                {loading ? 'Updating' : `${diff > 0 ? '+' : ''}${formatCurrency(diff)}/mo`}
               </span>
             </div>
 
             <div className="scenario-result-side">
               <span className="scenario-result-tag">What if</span>
               <span className={`scenario-result-val ${supportB.eligible ? '' : 'not-eligible'}`}>
-                {formatCurrency(supportB.support_monthly)}/mo
+                {loading ? '...' : `${formatCurrency(supportB.support_monthly)}/mo`}
               </span>
             </div>
           </div>
 
-          {programSummary(supportA) !== programSummary(supportB) && (
+          {programSummary(baselineResult) !== programSummary(supportB) && !loading && (
             <div className="scenario-eligibility-change">
-              Programs change: {programSummary(supportA)} {'->'} {programSummary(supportB)}
+              Programs change: {programSummary(baselineResult)} {'->'} {programSummary(supportB)}
+            </div>
+          )}
+          {error && (
+            <div className="scenario-error">
+              {error}
             </div>
           )}
         </div>
@@ -207,12 +221,12 @@ function ScenarioComparison({ defaultInputs }) {
 
       {hasChanges && (
         <button
+          type="button"
           className="scenario-reset-btn"
           onClick={() => setScenarioB({
-            num_adults: defaultInputs.num_adults,
-            num_children: defaultInputs.num_children,
-            earned_income: earnedA,
-            unearned_income: unearnedA,
+            num_adults: baseAdultCount,
+            num_children: baseChildCount,
+            tax_unit_magi: defaultInputs.tax_unit_magi,
           })}
         >
           Reset to current

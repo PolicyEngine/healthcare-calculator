@@ -1,0 +1,48 @@
+{
+  "state": "TX",
+  "year": 2026,
+  "county": "Harris County",
+  "tax_unit_magi": 42000,
+  "people": [
+    {
+      "id": "head",
+      "role": "head",
+      "age": 40,
+      "has_esi": false,
+      "offered_aca_disqualifying_esi": false,
+      "is_pregnant": false,
+      "immigration_status": "Citizen",
+      "has_itin": true
+    },
+    {
+      "id": "spouse",
+      "role": "spouse",
+      "age": 38,
+      "has_esi": false,
+      "offered_aca_disqualifying_esi": false,
+      "is_pregnant": false,
+      "immigration_status": "Citizen",
+      "has_itin": true
+    },
+    {
+      "id": "child_1",
+      "role": "dependent",
+      "age": 10,
+      "has_esi": false,
+      "offered_aca_disqualifying_esi": false,
+      "is_pregnant": false,
+      "immigration_status": "Citizen",
+      "has_itin": true
+    },
+    {
+      "id": "child_2",
+      "role": "dependent",
+      "age": 7,
+      "has_esi": false,
+      "offered_aca_disqualifying_esi": false,
+      "is_pregnant": false,
+      "immigration_status": "Citizen",
+      "has_itin": true
+    }
+  ]
+}
