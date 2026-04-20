@@ -3,8 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Healthcare Calculator | Compare ACA, Medicaid & CHIP Support by State | PolicyEngine</title>
+    <meta name="description" content="Estimate your household's ACA, Medicaid, and CHIP healthcare support across all US states. Compare benefits by income, household size, and state with PolicyEngine's free calculator." />
+    <meta name="robots" content="index, follow" />
+    <link rel="canonical" href="https://healthcare-calculator.policyengine.org/" />
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Healthcare Calculator | Compare ACA, Medicaid & CHIP Support by State" />
+    <meta property="og:description" content="Estimate your household's ACA, Medicaid, and CHIP healthcare support across all US states. Compare benefits by income, household size, and state." />
+    <meta property="og:url" content="https://healthcare-calculator.policyengine.org/" />
+    <meta property="og:site_name" content="PolicyEngine" />
+    <meta property="og:image" content="https://healthcare-calculator.policyengine.org/policyengine-logo.png" />
+    <meta property="og:locale" content="en_US" />
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="Healthcare Calculator | Compare ACA, Medicaid & CHIP Support" />
+    <meta name="twitter:description" content="Estimate your household's ACA, Medicaid, and CHIP healthcare support across all US states." />
+    <meta name="twitter:image" content="https://healthcare-calculator.policyengine.org/policyengine-logo.png" />
+
+    <!-- Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebApplication",
+      "name": "Healthcare Calculator",
+      "description": "Estimate your household's ACA, Medicaid, and CHIP healthcare support across all US states. Compare benefits by income, household size, and state.",
+      "url": "https://healthcare-calculator.policyengine.org/",
+      "applicationCategory": "FinanceApplication",
+      "operatingSystem": "Any",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "author": {
+        "@type": "Organization",
+        "name": "PolicyEngine",
+        "url": "https://policyengine.org"
+      }
+    }
+    </script>
+
     <link rel="icon" href="policyengine-logo.png" />
-    <title>Healthcare Calculator</title>
+
+    <!-- Preconnect to Google Fonts for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" />
+
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-2YHG89FY0N"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -57,6 +105,9 @@
   </head>
   <body>
     <div id="root"></div>
+    <noscript>
+      <p>You need to enable JavaScript to use the Healthcare Calculator. This tool estimates ACA, Medicaid, and CHIP support across US states.</p>
+    </noscript>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
