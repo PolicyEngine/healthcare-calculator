@@ -159,6 +159,7 @@ function App() {
         <p>Estimate ACA, Medicaid, and CHIP support across states</p>
       </header>
 
+      <main>
       <div className="top-layout">
         <InputPanel
           selectedState={selectedState}
@@ -226,6 +227,11 @@ function App() {
           </div>
         </section>
       )}
+      </main>
+
+      <footer className="app-footer">
+        Built by <a href="https://policyengine.org">PolicyEngine</a>. Estimates are based on current ACA, Medicaid, and CHIP rules and may not reflect final eligibility.
+      </footer>
     </div>
   )
 }
