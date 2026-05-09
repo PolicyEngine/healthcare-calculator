@@ -1,7 +1,14 @@
 /docs
 /frontend/node_modules
 /frontend/dist
+/frontend/.next
+/frontend/out
+/frontend/.vercel
+/frontend/*.tsbuildinfo
+/frontend/next-env.d.ts
 /frontend/public/data
 .DS_Store
 __pycache__/
 *.pyc
+*.local
+.env*.local
