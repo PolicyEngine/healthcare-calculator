@@ -1,4 +1,7 @@
-/* Inter font is loaded via <link> in index.html for better performance */
+@import "tailwindcss";
+@import "@policyengine/ui-kit/theme.css";
+
+/* Inter font is loaded via <link> in layout.tsx for better performance */
 
 :root {
   --color-navy: #1E293B;

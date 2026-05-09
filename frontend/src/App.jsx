@@ -1,3 +1,5 @@
+'use client'
+
 import { useEffect, useRef, useState } from 'react'
 import StateMap from './components/StateMap'
 import InputPanel from './components/InputPanel'
