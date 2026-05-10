@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
+import PolicyEngineHeader from '@/components/PolicyEngineHeader';
 import './globals.css';
 
 const SITE_URL = 'https://healthcare-calculator.policyengine.org';
@@ -144,6 +145,7 @@ export default function RootLayout({
             })();
           `}
         </Script>
+        <PolicyEngineHeader />
         {children}
         <noscript>
           <p>
