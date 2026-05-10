@@ -19,6 +19,7 @@ const TWITTER_DESCRIPTION =
 const OG_IMAGE = `${SITE_URL}/policyengine-logo.png`;
 const GA_MEASUREMENT_ID = 'G-2YHG89FY0N';
 const TOOL_NAME = 'healthcare-calculator';
+const BASE_PATH = process.env.NEXT_PUBLIC_BASE_PATH || '';
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
@@ -41,7 +42,7 @@ export const metadata: Metadata = {
     description: TWITTER_DESCRIPTION,
     images: [{ url: OG_IMAGE }],
   },
-  icons: { icon: '/policyengine-logo.png' },
+  icons: { icon: `${BASE_PATH}/policyengine-logo.png` },
 };
 
 export const viewport: Viewport = {
