@@ -1,3 +1,6 @@
+import { PolicyEngineShell } from "@policyengine/ui-kit/layout";
+import "@policyengine/ui-kit/styles.css";
+
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import PolicyEngineHeader from '@/components/PolicyEngineHeader';
@@ -90,6 +93,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <PolicyEngineShell country="us">
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
@@ -154,6 +158,7 @@ export default function RootLayout({
             tool estimates ACA, Medicaid, and CHIP support across US states.
           </p>
         </noscript>
+              </PolicyEngineShell>
       </body>
     </html>
   );
