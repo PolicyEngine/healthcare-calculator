@@ -1,8 +1,10 @@
 import type { NextConfig } from 'next';
 
-const basePath = process.env.NEXT_PUBLIC_BASE_PATH !== undefined
-  ? process.env.NEXT_PUBLIC_BASE_PATH
-  : '/us/coverage-compass';
+// healthcare-calculator is its own product — do NOT default to another app's
+// multizone path. Coverage Compass owns /us/coverage-compass; this calculator
+// should build at root unless an explicit NEXT_PUBLIC_BASE_PATH is set at
+// build time (for whatever route policyengine.org decides to mount it at).
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
 
 const nextConfig: NextConfig = {
   ...(basePath ? { basePath } : {}),
