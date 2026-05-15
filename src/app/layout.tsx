@@ -1,3 +1,6 @@
+import { PolicyEngineShell } from "@policyengine/ui-kit/layout";
+import "@policyengine/ui-kit/styles.css";
+
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
 import PolicyEngineHeader from '@/components/PolicyEngineHeader';
@@ -90,7 +93,7 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <Script
+                <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GA_MEASUREMENT_ID}`}
           strategy="afterInteractive"
         />
@@ -146,14 +149,16 @@ export default function RootLayout({
             })();
           `}
         </Script>
-        <PolicyEngineHeader />
-        {children}
         <noscript>
           <p>
             You need to enable JavaScript to use the Healthcare Calculator. This
             tool estimates ACA, Medicaid, and CHIP support across US states.
           </p>
         </noscript>
+        <PolicyEngineShell country="us">
+          <PolicyEngineHeader />
+        {children}
+        </PolicyEngineShell>
       </body>
     </html>
   );
