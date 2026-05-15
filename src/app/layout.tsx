@@ -3,7 +3,6 @@ import "@policyengine/ui-kit/styles.css";
 
 import type { Metadata, Viewport } from 'next';
 import Script from 'next/script';
-import PolicyEngineHeader from '@/components/PolicyEngineHeader';
 import './globals.css';
 
 const SITE_URL = 'https://healthcare-calculator.policyengine.org';
@@ -156,7 +155,6 @@ export default function RootLayout({
           </p>
         </noscript>
         <PolicyEngineShell country="us">
-          <PolicyEngineHeader />
         {children}
         </PolicyEngineShell>
       </body>
